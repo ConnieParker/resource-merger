@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Resources;
 
@@ -12,17 +13,17 @@ namespace resource_merger
         static void Main(string[] args)
         {
             // === Utility wireframe ===
-            // --- Phase 1 - Dupe Calc ---
+            // --- Phase 1 - Resx ---
             // 1. Input a resx file
             // 2. Find duplicates (store duplicates in memory for future use)
-            // 3. Merge duplicates into single keypair 
+            // 3. Merge duplicates into single keypair and write to resx
             // --- Phase 2 - Source Updates ---
-            // 4. Input an array of csproj files
-            // 4. Iterate over all files in csproj *apart from resx*
-            // 5. Find and replace merged keypairs in string
-            // 6. Save back down
-            // 7. Done
+            // 4. Input a source file directory
+            // 5. Iterate over all files
+            // 6. Perform duplicate substitutions
+            // 7. Save back down
 
+            // --- Phase 1 - Resx ---
             // Step 1. Input resx file.
             Console.WriteLine("Please specify a resx file.");
             var resxPath = Console.ReadLine();
@@ -66,9 +67,48 @@ namespace resource_merger
             //Notice how this is getting semantically difficult as we've flipped the key/value relationship.
             duplicates = (Dictionary<string, List<string>>)duplicates.Where(x => x.Key.Count() > 1);
 
-            // Step 3. Merge duplicates down
-            // Rule; always use the *first key*, as it'll be the first time that resource was added to the file.
+            // Step 3. Merge duplicates down and write to resx
+            //TODO - Check that writing to an existing resx file is supported
+            using (var writer = new ResXResourceWriter(resxPath))
+            {
+                resx.ForEach(r =>
+                {
+                    // Again Adding all resource to generate with final items
+                    writer.AddResource(r.Key.ToString(), r.Value.ToString());
+                });
+                writer.Generate();
+            }
 
+            // --- Phase 2 - Source Updates ---
+            // Step 4. Input a source directory
+            Console.WriteLine("Please specify a source directory to update.");
+            var sourceDir = Console.ReadLine();
+            string[] entries = Directory.GetFileSystemEntries(sourceDir, "*", SearchOption.AllDirectories);
+
+            // Step 5. Iterate over all files
+            foreach(var filePath in entries)
+            {
+                //Is it a file? (i.e. not a dir, temp, archive, etc)
+                if(File.GetAttributes(filePath) == FileAttributes.Normal)
+                {
+                    //Read out contents
+                    string fileContents = File.ReadAllText(filePath);
+                    
+                    // Step 6. Perform duplicate substitutions
+                    //fileContents = fileContents.Replace("some text", "some other text");
+                    foreach(var dupe in duplicates)
+                    {
+                        var newKey = dupe.Value[0];
+                        foreach(var dupeKey in dupe.Value.Skip(1))
+                        {
+                            fileContents = fileContents.Replace(dupeKey, newKey);
+                        }
+                    }
+
+                    // Step 7. Save back down
+                    File.WriteAllText(filePath, fileContents);
+                }
+            }
         }
 
         private static void PrintDuplicateDetected(List<string> keys, string value)
