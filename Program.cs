@@ -100,7 +100,7 @@ namespace resource_merger
                 //fileContents = fileContents.Replace("some text", "some other text");
                 foreach (var dupe in duplicates)
                 {
-                    var newKey = dupe.Value[0];
+                    var newKey = CreateCommonKeyName(dupe.Value);
                     foreach (var dupeKey in dupe.Value.Skip(1))
                     {
                         //Checking the file for the dupe key first means we don't do
@@ -145,6 +145,20 @@ namespace resource_merger
             Console.WriteLine("FILE: " + fileName);
             Console.WriteLine("DUPLICATE: " + dupeKey);
             Console.WriteLine("NEW: " + newKey);
+        }
+
+        private static string CreateCommonKeyName(IEnumerable<string> oldKeys)
+        {
+            var common = oldKeys.Where(x => x.Contains("Common")).FirstOrDefault();
+
+            if(common == null)
+            {
+                var first = oldKeys.ElementAt(0);
+                var suffix = first.Substring(first.IndexOf('_') + 1);
+                common = "Common_" + suffix;
+            }
+
+            return common;
         }
     }
 }
