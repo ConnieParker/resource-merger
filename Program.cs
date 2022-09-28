@@ -65,7 +65,7 @@ namespace resource_merger
             }
             //Trim the duplicates dictionary to only entries with more than one key for the value.
             //Notice how this is getting semantically difficult as we've flipped the key/value relationship.
-            duplicates = (Dictionary<string, List<string>>)duplicates.Where(x => x.Key.Count() > 1);
+            duplicates = duplicates.Where(x => x.Key.Count() > 1).ToDictionary(x => x.Key, x => x.Value);
 
             // Step 3. Merge duplicates down and write to resx
             //TODO - Check that writing to an existing resx file is supported
@@ -91,6 +91,8 @@ namespace resource_merger
             // Step 5. Iterate over all files
             foreach (var filePath in files)
             {
+                bool dirty = false;
+
                 //Read out contents
                 string fileContents = File.ReadAllText(filePath);
 
@@ -101,14 +103,30 @@ namespace resource_merger
                     var newKey = dupe.Value[0];
                     foreach (var dupeKey in dupe.Value.Skip(1))
                     {
-                        fileContents = fileContents.Replace(dupeKey, newKey);
-                        PrintDupeReplaced(filePath, dupeKey, newKey);
+                        //Checking the file for the dupe key first means we don't do
+                        //unneeded writes
+                        if (fileContents.Contains(dupeKey))
+                        {
+                            fileContents = fileContents.Replace(dupeKey, newKey);
+                            PrintDupeReplaced(filePath, dupeKey, newKey);
+                            dirty = true;
+                        }
                     }
                 }
 
                 // Step 7. Save back down
-                File.WriteAllText(filePath, fileContents);
+                if (dirty)
+                {
+                    File.WriteAllText(filePath, fileContents);
+                }
             }
+
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine("Duplicate merging successfully completed.");
+            Console.WriteLine("Press any key to exit.");
+            Console.ReadKey(true);
         }
 
         private static void PrintDuplicateDetected(List<string> keys, string value)
