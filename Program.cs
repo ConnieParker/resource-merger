@@ -37,18 +37,18 @@ namespace resource_merger
                 var toRemove = new List<DictionaryEntry>();
                 resx = reader.Cast<DictionaryEntry>().ToList();
 
-                foreach(var item in resx)
+                foreach (var item in resx)
                 {
                     string resourceKey = (string)item.Key;
                     string resourceValue = (string)item.Value;
                     //Have we seen this resx value before?
                     //If yes, add this resx-key to this entry.
-                    if(duplicates.ContainsKey(resourceValue))
+                    if (duplicates.ContainsKey(resourceValue))
                     {
                         duplicates[resourceValue].Add(resourceKey);
                         PrintDuplicateDetected(duplicates[resourceValue], resourceValue);
                         toRemove.Add(item);
-                        
+
                     }
                     //If no, add an entry to the duplicates dictionary.
                     else
@@ -83,31 +83,31 @@ namespace resource_merger
             // Step 4. Input a source directory
             Console.WriteLine("Please specify a source directory to update.");
             var sourceDir = Console.ReadLine();
-            string[] entries = Directory.GetFileSystemEntries(sourceDir, "*", SearchOption.AllDirectories);
+            var allowedExtensions = new[] { ".cs", ".cshtml" };
+            var files = Directory.GetFileSystemEntries(sourceDir, "*", SearchOption.AllDirectories)
+                .Where(file => allowedExtensions.Any(file.ToLower().EndsWith))
+                .ToList();
 
             // Step 5. Iterate over all files
-            foreach(var filePath in entries)
+            foreach (var filePath in files)
             {
-                //Is it a file? (i.e. not a dir, temp, archive, etc)
-                if(File.GetAttributes(filePath) == FileAttributes.Normal)
-                {
-                    //Read out contents
-                    string fileContents = File.ReadAllText(filePath);
-                    
-                    // Step 6. Perform duplicate substitutions
-                    //fileContents = fileContents.Replace("some text", "some other text");
-                    foreach(var dupe in duplicates)
-                    {
-                        var newKey = dupe.Value[0];
-                        foreach(var dupeKey in dupe.Value.Skip(1))
-                        {
-                            fileContents = fileContents.Replace(dupeKey, newKey);
-                        }
-                    }
+                //Read out contents
+                string fileContents = File.ReadAllText(filePath);
 
-                    // Step 7. Save back down
-                    File.WriteAllText(filePath, fileContents);
+                // Step 6. Perform duplicate substitutions
+                //fileContents = fileContents.Replace("some text", "some other text");
+                foreach (var dupe in duplicates)
+                {
+                    var newKey = dupe.Value[0];
+                    foreach (var dupeKey in dupe.Value.Skip(1))
+                    {
+                        fileContents = fileContents.Replace(dupeKey, newKey);
+                        PrintDupeReplaced(filePath, dupeKey, newKey);
+                    }
                 }
+
+                // Step 7. Save back down
+                File.WriteAllText(filePath, fileContents);
             }
         }
 
@@ -119,6 +119,14 @@ namespace resource_merger
             {
                 Console.WriteLine("DUPE KEY: " + key);
             }
+        }
+
+        private static void PrintDupeReplaced(string fileName, string dupeKey, string newKey)
+        {
+            Console.WriteLine("--- DUPLICATE REPLACED ---");
+            Console.WriteLine("FILE: " + fileName);
+            Console.WriteLine("DUPLICATE: " + dupeKey);
+            Console.WriteLine("NEW: " + newKey);
         }
     }
 }
