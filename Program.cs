@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.IO;
 using System.Linq;
 using System.Resources;
@@ -32,16 +33,17 @@ namespace resource_merger
             // Step 2. Find duplicates
             //Caution in naming here; values become keys, keys become values.
             Dictionary<string, List<string>> duplicates = new Dictionary<string, List<string>>();
-            List<DictionaryEntry> resx;
+            List<ResXDataNode> resx;
             using (var reader = new ResXResourceReader(resxPath))
             {
-                var toRemove = new List<DictionaryEntry>();
-                resx = reader.Cast<DictionaryEntry>().ToList();
+                var toRemove = new List<ResXDataNode>();
+                reader.UseResXDataNodes = true;
+                resx = reader.Cast<DictionaryEntry>().Select(x => (ResXDataNode)x.Value).ToList();
 
                 foreach (var item in resx)
                 {
-                    string resourceKey = (string)item.Key;
-                    string resourceValue = (string)item.Value;
+                    string resourceKey = (string)item.Name;
+                    string resourceValue = (string)item.GetValue((ITypeResolutionService)null).ToString();
                     //Have we seen this resx value before?
                     //If yes, add this resx-key to this entry.
                     if (duplicates.ContainsKey(resourceValue))
@@ -72,10 +74,10 @@ namespace resource_merger
             //TODO - Check that writing to an existing resx file is supported
             using (var writer = new ResXResourceWriter(resxPath))
             {
-                resx.ForEach(r =>
+                resx.ForEach(resxNode =>
                 {
                     // Again Adding all resource to generate with final items
-                    writer.AddResource(r.Key.ToString(), r.Value.ToString());
+                    writer.AddResource(resxNode);
                 });
                 writer.Generate();
             }
