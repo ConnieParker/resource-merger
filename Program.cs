@@ -1,5 +1,4 @@
-﻿using resource_merger.Models;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
@@ -50,13 +49,23 @@ namespace resource_merger
                     {
                         duplicates[resourceValue].Add(resourceKey);
                         PrintDuplicateDetected(duplicates[resourceValue], resourceValue);
-                        toRemove.Add(item);
-
                     }
                     //If no, add an entry to the duplicates dictionary.
                     else
                     {
                         duplicates[resourceValue] = new List<string>() { resourceKey };
+                    }
+                }
+
+                //Calculate which to remove
+                foreach(var dupe in duplicates)
+                {
+                    var bestKey = SelectBestKey(dupe.Value);
+                    var redundants = dupe.Value.Where(x => !x.Equals(bestKey));
+                    foreach(var redundant in redundants)
+                    {
+                        var node = resx.Where(x => x.Name == redundant).SingleOrDefault();
+                        toRemove.Add(node);
                     }
                 }
 
@@ -104,7 +113,7 @@ namespace resource_merger
                 //fileContents = fileContents.Replace("some text", "some other text");
                 foreach (var dupe in duplicates)
                 {
-                    var newKey = CreateCommonKeyName(dupe.Value);
+                    var newKey = SelectBestKey(dupe.Value);
                     var defunctKeys = dupe.Value.Where(x => x != newKey);
                     foreach (var dupeKey in defunctKeys)
                     {
@@ -152,7 +161,7 @@ namespace resource_merger
             Console.WriteLine("NEW: " + newKey);
         }
 
-        private static string CreateCommonKeyName(IEnumerable<string> oldKeys)
+        private static string SelectBestKey(IEnumerable<string> oldKeys)
         {
             //See if a common name exists
             var newKey = oldKeys.Where(x => x.Contains("Common")).FirstOrDefault();
