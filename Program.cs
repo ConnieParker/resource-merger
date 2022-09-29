@@ -15,19 +15,35 @@ namespace resource_merger
         {
             // === Utility wireframe ===
             // --- Phase 1 - Resx ---
-            // 1. Input a resx file
+            // 1. Input a resx file and source file directory
             // 2. Find duplicates (store duplicates in memory for future use)
             // 3. Merge duplicates into single keypair and write to resx
             // --- Phase 2 - Source Updates ---
-            // 4. Input a source file directory
-            // 5. Iterate over all files
-            // 6. Perform duplicate substitutions
-            // 7. Save back down
+            // 4. Iterate over all files
+            // 5. Perform duplicate substitutions
+            // 6. Save back down
+
+            // --- Intro ---
+            Console.Write(ASCII.BANNER);
+            Console.WriteLine();
+            Console.WriteLine("===== WARNING =====");
+            Console.WriteLine("This tool rewrites files!");
+            Console.WriteLine();
+            Console.WriteLine("Firearm rules apply: do not point this tool at anything you don't want to destroy!");
+            Console.WriteLine("No reversion mechanism is provided; it is advised to only use this tool in");
+            Console.WriteLine("directories which are managed by source control!");
+            Console.WriteLine();
+            Console.WriteLine("If you understand the above, press any key to continue!");
+            Console.ReadKey(true);
+            Console.Clear();
 
             // --- Phase 1 - Resx ---
-            // Step 1. Input resx file.
+            // Step 1. Input target directories.
+
             Console.WriteLine("Please specify a resx file.");
             var resxPath = Console.ReadLine();
+            Console.WriteLine("Please specify a source directory to update.");
+            var sourceDir = Console.ReadLine();
 
             // Step 2. Find duplicates
             //Caution in naming here; values become keys, keys become values.
@@ -91,16 +107,17 @@ namespace resource_merger
                 writer.Generate();
             }
 
+            Console.WriteLine();
+            Console.WriteLine("Performing source file substitutions.");
+            Console.WriteLine();
+
             // --- Phase 2 - Source Updates ---
-            // Step 4. Input a source directory
-            Console.WriteLine("Please specify a source directory to update.");
-            var sourceDir = Console.ReadLine();
             var allowedExtensions = new[] { ".cs", ".cshtml" };
             var files = Directory.GetFileSystemEntries(sourceDir, "*", SearchOption.AllDirectories)
                 .Where(file => allowedExtensions.Any(file.ToLower().EndsWith))
                 .ToList();
 
-            // Step 5. Iterate over all files
+            // Step 4. Iterate over all files
             foreach (var filePath in files)
             {
                 bool dirty = false;
@@ -109,7 +126,7 @@ namespace resource_merger
                 //Read out contents
                 string fileContents = File.ReadAllText(filePath);
 
-                // Step 6. Perform duplicate substitutions
+                // Step 5. Perform duplicate substitutions
                 //fileContents = fileContents.Replace("some text", "some other text");
                 foreach (var dupe in duplicates)
                 {
@@ -128,7 +145,7 @@ namespace resource_merger
                     }
                 }
 
-                // Step 7. Save back down
+                // Step 6. Save back down
                 if (dirty)
                 {
                     File.WriteAllText(filePath, fileContents, encoding);
@@ -138,7 +155,7 @@ namespace resource_merger
             Console.WriteLine();
             Console.WriteLine();
             Console.WriteLine();
-            Console.WriteLine("Duplicate merging successfully completed.");
+            Console.WriteLine("Resource merging successfully completed.");
             Console.WriteLine("Press any key to exit.");
             Console.ReadKey(true);
         }
