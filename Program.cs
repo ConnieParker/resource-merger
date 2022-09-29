@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Resources;
+using System.Text;
 
 namespace resource_merger
 {
@@ -92,6 +93,7 @@ namespace resource_merger
             foreach (var filePath in files)
             {
                 bool dirty = false;
+                Encoding encoding = GetEncoding(files[0]);
 
                 //Read out contents
                 string fileContents = File.ReadAllText(filePath);
@@ -101,7 +103,8 @@ namespace resource_merger
                 foreach (var dupe in duplicates)
                 {
                     var newKey = CreateCommonKeyName(dupe.Value);
-                    foreach (var dupeKey in dupe.Value.Skip(1))
+                    var defunctKeys = dupe.Value.Where(x => x != newKey);
+                    foreach (var dupeKey in defunctKeys)
                     {
                         //Checking the file for the dupe key first means we don't do
                         //unneeded writes
@@ -117,7 +120,7 @@ namespace resource_merger
                 // Step 7. Save back down
                 if (dirty)
                 {
-                    File.WriteAllText(filePath, fileContents);
+                    File.WriteAllText(filePath, fileContents, encoding);
                 }
             }
 
@@ -149,16 +152,38 @@ namespace resource_merger
 
         private static string CreateCommonKeyName(IEnumerable<string> oldKeys)
         {
-            var common = oldKeys.Where(x => x.Contains("Common")).FirstOrDefault();
+            //See if a common name exists
+            var newKey = oldKeys.Where(x => x.Contains("Common")).FirstOrDefault();
 
-            if(common == null)
+            //Else use the first instance we found
+            if(newKey == null)
             {
-                var first = oldKeys.ElementAt(0);
-                var suffix = first.Substring(first.IndexOf('_') + 1);
-                common = "Common_" + suffix;
+                return oldKeys.ElementAt(0);
             }
 
-            return common;
+            return newKey;
+        }
+
+        public static Encoding GetEncoding(string filename)
+        {
+            // Read the BOM
+            var bom = new byte[4];
+            using (var file = new FileStream(filename, FileMode.Open, FileAccess.Read))
+            {
+                file.Read(bom, 0, 4);
+            }
+
+            // Analyze the BOM
+            if (bom[0] == 0x2b && bom[1] == 0x2f && bom[2] == 0x76) return Encoding.UTF7;
+            if (bom[0] == 0xef && bom[1] == 0xbb && bom[2] == 0xbf) return Encoding.UTF8;
+            if (bom[0] == 0xff && bom[1] == 0xfe && bom[2] == 0 && bom[3] == 0) return Encoding.UTF32; //UTF-32LE
+            if (bom[0] == 0xff && bom[1] == 0xfe) return Encoding.Unicode; //UTF-16LE
+            if (bom[0] == 0xfe && bom[1] == 0xff) return Encoding.BigEndianUnicode; //UTF-16BE
+            if (bom[0] == 0 && bom[1] == 0 && bom[2] == 0xfe && bom[3] == 0xff) return new UTF32Encoding(true, true);  //UTF-32BE
+
+            // We actually have no idea what the encoding is if we reach this point, so
+            // you may wish to return null instead of defaulting to ASCII
+            return Encoding.ASCII;
         }
     }
 }
