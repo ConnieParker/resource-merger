@@ -155,9 +155,29 @@ namespace resource_merger
             Console.WriteLine();
             Console.WriteLine();
             Console.WriteLine();
+            WriteDuplicateLog(duplicates);
             Console.WriteLine("Resource merging successfully completed.");
             Console.WriteLine("Press any key to exit.");
             Console.ReadKey(true);
+        }
+
+        private static void WriteDuplicateLog(Dictionary<string, List<string>> duplicates)
+        {
+            string log = "";
+
+            foreach (var dupe in duplicates.Where(x => x.Value.Count() > 1))
+            {
+                log += "DUPLICATE" + Environment.NewLine;
+                log += "VALUE: " + dupe.Key + Environment.NewLine;
+                foreach(string key in dupe.Value)
+                {
+                    log += "FOUND KEY: " + key + Environment.NewLine;
+                }
+                log += "SELECTED KEY: " + SelectBestKey(dupe.Value) + Environment.NewLine;
+                log += Environment.NewLine;
+            }
+
+            File.WriteAllText(AppContext.BaseDirectory + "\\merger-log.txt", log);
         }
 
         private static void PrintDuplicateDetected(List<string> keys, string value)
